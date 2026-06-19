@@ -31,79 +31,182 @@
  */
 
 
+/**
+ * ============================================
+ * QUIZ CLASS
+ * ============================================
+ */
+
 export default class Quiz {
   
-  // TODO: Create constructor
-  // Initialize all properties mentioned above
+  // 1. الـ Constructor: تهيئة كل البيانات الأساسية للعبة
+  constructor(category, difficulty, numberOfQuestions, playerName) {
+    this.category = category;
+    this.difficulty = difficulty;
+    this.numberOfQuestions = Number(numberOfQuestions); // نضمن إنه رقم
+    this.playerName = playerName || 'Player'; // لو مفيش اسم نخليه Player افتراضي
+    
+    this.score = 0;
+    this.questions = []; // هتشيل الأسئلة القادمة من الـ API
+    this.currentQuestionIndex = 0;
+  }
   
+  // 2. بناء رابط الـ API باستخدام URLSearchParams
+  buildApiUrl() {
+    const baseUrl = 'https://opentdb.com/api.php';
+    const params = new URLSearchParams({
+        amount: this.numberOfQuestions
+    });
+    
+    // لو اخترنا Category معينة ضيفها للرابط (لو فاضية سيبها عشوائي)
+    if (this.category) params.append('category', this.category);
+    // لو اخترنا صعوبة معينة ضيفها
+    if (this.difficulty) params.append('difficulty', this.difficulty);
+    
+    return `${baseUrl}?${params.toString()}`;
+  }
   
-  // TODO: Create async getQuestions() method
-  // 1. Build the API URL using buildApiUrl()
-  // 2. Use fetch() to get data
-  // 3. Check if response.ok, throw error if not
-  // 4. Parse JSON: const data = await response.json()
-  // 5. Check if data.response_code === 0 (success)
-  // 6. Store data.results in this.questions
-  // 7. Return this.questions
+  // 3. جلب الأسئلة من الـ API
+  async getQuestions() {
+    const url = this.buildApiUrl();
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+        throw new Error('Failed to fetch questions from API');
+    }
+    
+    const data = await response.json();
+    
+    // التأكد من أن الـ API رجع داتا بنجاح (response_code === 0)
+    if (data.response_code === 0) {
+        this.questions = data.results;
+        return this.questions;
+    } else {
+        throw new Error('No questions found for these options. Try reducing amount.');
+    }
+  }
   
+  // 4. زيادة الـ Score بمقدار 1
+  incrementScore() {
+    this.score++;
+  }
   
-  // TODO: Create buildApiUrl() method
-  // Use URLSearchParams to build query string
-  // Example result: "https://opentdb.com/api.php?amount=10&difficulty=easy"
+  // 5. الحصول على كائن السؤال الحالي
+  getCurrentQuestion() {
+    if (this.currentQuestionIndex >= 0 && this.currentQuestionIndex < this.questions.length) {
+        return this.questions[this.currentQuestionIndex];
+    }
+    return null;
+  }
   
+  // 6. الانتقال للسؤال التالي
+  nextQuestion() {
+    this.currentQuestionIndex++;
+    return !this.isComplete(); // يرجع true لو لسه فيه أسئلة، و false لو خلصنا
+  }
   
-  // TODO: Create incrementScore() method
-  // Simply add 1 to this.score
+  // 7. التأكد هل اللعبة انتهت أم لا
+  isComplete() {
+    return this.currentQuestionIndex >= this.questions.length;
+  }
   
+  // 8. حساب النسبة المئوية لدرجة المستخدم
+  getScorePercentage() {
+    return Math.round((this.score / this.numberOfQuestions) * 100);
+  }
   
-  // TODO: Create getCurrentQuestion() method
-  // Return this.questions[this.currentQuestionIndex]
-  // Return null if index is out of bounds
+  // 9. تحميل قائمة الـ High Scores من الـ LocalStorage
+  getHighScores() {
+    try {
+        const scores = localStorage.getItem('quizHighScores');
+        return scores ? JSON.parse(scores) : [];
+    } catch (error) {
+        console.error("Error reading high scores:", error);
+        return [];
+    }
+  }
   
+  // 10. التأكد هل السكور الحالي يدخل قائمة التوب 10؟
+  isHighScore() {
+    const highScores = this.getHighScores();
+    const currentPercentage = this.getScorePercentage();
+    
+    if (highScores.length < 10) return true;
+    
+    const lowestScore = highScores[highScores.length - 1].percentage;
+    return currentPercentage > lowestScore;
+  }
   
-  // TODO: Create nextQuestion() method
-  // Increment currentQuestionIndex
-  // Return true if there are more questions
-  // Return false if quiz is complete
+  // 11. حفظ السكور الجديد في الـ LocalStorage
+  saveHighScore() {
+    const highScores = this.getHighScores();
+    const newScoreObj = {
+        name: this.playerName,
+        score: this.score,
+        total: this.numberOfQuestions,
+        percentage: this.getScorePercentage(),
+        difficulty: this.difficulty,
+        date: new Date().toLocaleDateString()
+    };
+    
+    highScores.push(newScoreObj);
+    highScores.sort((a, b) => b.percentage - a.percentage); // الترتيب من الأعلى للأقل
+    
+    const topTen = highScores.slice(0, 10); // احتفظ بأول 10 بس
+    localStorage.setItem('quizHighScores', JSON.stringify(topTen));
+  }
   
-  
-  // TODO: Create isComplete() method
-  // Return true if currentQuestionIndex >= questions.length
-  
-  
-  // TODO: Create getScorePercentage() method
-  // Calculate: (score / numberOfQuestions) * 100
-  // Round to whole number using Math.round()
-  
-  
-  // TODO: Create saveHighScore() method
-  // 1. Get existing high scores using getHighScores()
-  // 2. Create new score object: { name, score, total, percentage, difficulty, date }
-  // 3. Push to array
-  // 4. Sort by percentage (highest first)
-  // 5. Keep only top 10
-  // 6. Save to localStorage using JSON.stringify()
-  
-  
-  // TODO: Create getHighScores() method
-  // 1. Get from localStorage using 'quizHighScores' key
-  // 2. Parse JSON
-  // 3. Return array (or empty array if nothing saved)
-  // Wrap in try/catch for safety
-  
-  
-  // TODO: Create isHighScore() method
-  // Return true if:
-  // - Less than 10 saved, OR
-  // - Current percentage beats the lowest saved score
-  
-  
-  // TODO: Create endQuiz() method
-  // 1. Calculate percentage
-  // 2. Check if it's a high score
-  // 3. If yes, save it (BEFORE getting high scores for display)
-  // 4. Get high scores (AFTER saving)
-  // 5. Return HTML string for results screen
-  //    (See index.html for the HTML structure to use)
-  
+  // 12. شاشة نهاية اللعبة وعرض النتائج (مأخوذة من نفس هيكل الـ HTML المطلوب)
+  endQuiz() {
+    const percentage = this.getScorePercentage();
+    if (this.isHighScore()) {
+        this.saveHighScore();
+    }
+    
+    const allHighScores = this.getHighScores();
+    
+    // رسم جدول الـ Leaderboard التوب 10
+    const leaderboardItems = allHighScores.map((s, index) => {
+        let rankClass = '';
+        if (index === 0) rankClass = 'gold';
+        else if (index === 1) rankClass = 'silver';
+        else if (index === 2) rankClass = 'bronze';
+        
+        return `
+          <li class="leaderboard-item ${rankClass}">
+            <span class="leaderboard-rank">#${index + 1}</span>
+            <span class="leaderboard-name">${s.name}</span>
+            <span class="leaderboard-score">${s.percentage}%</span>
+          </li>
+        `;
+    }).join('');
+
+    return `
+        <div class="game-card results-card animate__animated animate__zoomIn">
+          <h2 class="results-title">Quiz Complete!</h2>
+          <p class="results-score-display">${this.score}/${this.numberOfQuestions}</p>
+          <p class="results-percentage">${percentage}% Accuracy</p>
+          
+          ${this.isHighScore() ? `
+          <div class="new-record-badge">
+            <i class="fa-solid fa-star"></i> New High Score!
+          </div>` : ''}
+          
+          <div class="leaderboard">
+            <h4 class="leaderboard-title">
+              <i class="fa-solid fa-trophy"></i> Leaderboard
+            </h4>
+            <ul class="leaderboard-list">
+              ${leaderboardItems}
+            </ul>
+          </div>
+          
+          <div class="action-buttons">
+            <button class="btn-restart" id="playAgainBtn">
+              <i class="fa-solid fa-rotate-right"></i> Play Again
+            </button>
+          </div>
+        </div>
+    `;
+  }
 }
