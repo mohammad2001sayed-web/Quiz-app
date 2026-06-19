@@ -123,7 +123,6 @@ export default class Question {
     const questionHtml = `
       <div class="game-card question-card">
         
-        <!-- شريط التقدم Progress Bar -->
         <div class="xp-bar-container">
           <div class="xp-bar-header">
             <span class="xp-label"><i class="fa-solid fa-bolt"></i> Progress</span>
@@ -134,7 +133,6 @@ export default class Question {
           </div>
         </div>
 
-        <!-- شارات الإحصائيات والمعلومات المعروضة -->
         <div class="stats-row">
           <div class="stat-badge category">
             <i class="fa-solid fa-bookmark"></i>
@@ -154,10 +152,8 @@ export default class Question {
           </div>
         </div>
 
-        <!-- نص السؤال الأساسي -->
         <h2 class="question-text">${this.question}</h2>
 
-        <!-- شبكة أزرار الإجابات الأربعة -->
         <div class="answers-grid">
           ${this.allAnswers
             .map(
@@ -175,7 +171,6 @@ export default class Question {
           <i class="fa-regular fa-keyboard"></i> Press 1-4 to select
         </p>
 
-        <!-- لوحة الـ Score الحالية أسفل الكارت -->
         <div class="score-panel">
           <div class="score-item">
             <div class="score-item-label">Score</div>
@@ -242,7 +237,7 @@ export default class Question {
         timerBadgeEl.classList.add("warning");
       }
 
-      // محاكاة ميزة الـ 5 ثواني الأخيرة: تشغيل صوت التك تك التنازلي ورا بعض
+      // تشغيل صوت التك تك التنازلي ورا بعض عند آخر 5 ثواني
       if (this.timeRemaining <= 5 && this.timeRemaining > 0) {
         this.playAudio("tick");
       }
@@ -360,6 +355,9 @@ export default class Question {
 
   // TODO: Create animateQuestion(duration) method
   animateQuestion(duration) {
+    // التعديل الجوهري: نضمن إيقاف العداد تماماً ومسحه من الذاكرة فوراً لمنع التخطي التلقائي للأمام
+    this.stopTimer();
+
     // 1. Wait for 1500ms (transition delay)
     setTimeout(() => {
       const card = this.container.querySelector(".question-card");
@@ -390,7 +388,7 @@ export default class Question {
 
     const audio = new Audio(soundPath);
     if (type === "tick") {
-      audio.volume = 0.15; // نخلي التك تك هادية عشان متزعجش الودن
+      audio.volume = 0.15; // صوت التك تك هادي ومناسب للخلفية
     } else {
       audio.volume = 0.4;
     }
