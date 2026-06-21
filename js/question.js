@@ -77,6 +77,11 @@ export default class Question {
     this.timerInterval = null;
     this.timeRemaining = 15; // العداد 15 ثانية
 
+    // تجهيز متغير صوت الـ Ticking في الذاكرة من البداية لسهولة التحكم فيه وإيقافه
+    this.tickAudio = new Audio('./audio/tick.mp3');
+    this.tickAudio.volume = 0.15; // صوت هادئ ومناسب للخلفية
+    this.tickStarted = false; // flag عشان نضمن إنه يشتغل مرة واحدة بس
+
     this.displayQuestion();
   }
 
@@ -193,7 +198,6 @@ export default class Question {
 
   // TODO: Create startTimer() method
   startTimer() {
-    // تنظيف أي تايمر قديم فوراً قبل البدء
     this.stopTimer();
 
     const timerValueEl = document.getElementById('timerValue');
@@ -204,14 +208,15 @@ export default class Question {
       
       if (timerValueEl) timerValueEl.textContent = this.timeRemaining;
 
-      // تعديل مذهل: يتحول للون الأحمر عند 5 ثواني أو أقل بالملي!
+      // عند الوصول لـ 5 ثواني أو أقل، يتحول اللون للأحمر المثير
       if (this.timeRemaining <= 5 && timerBadgeEl) {
         timerBadgeEl.classList.add('warning');
       }
 
-      // تشغيل صوت التك تك عند آخر 5 ثواني
-      if (this.timeRemaining <= 5 && this.timeRemaining > 0) {
-        this.playAudio('tick');
+      // تشغيل صوت التك تك التنازلي "مرة واحدة فقط" عند ثانية 5 لمنع التداخل والسرعة المجنونة
+      if (this.timeRemaining <= 5 && this.timeRemaining > 0 && !this.tickStarted) {
+        this.tickStarted = true;
+        this.tickAudio.play().catch(e => console.log("Autoplay block: ", e));
       }
 
       if (this.timeRemaining <= 0) {
@@ -226,6 +231,11 @@ export default class Question {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
+    }
+    // كتم وإيقاف صوت العداد فوراً لمنعه من الاستمرار في الخلفية أو الانتقال للسؤال القادم
+    if (this.tickAudio) {
+      this.tickAudio.pause();
+      this.tickAudio.currentTime = 0; // إعادة مؤشر الصوت للصفر
     }
   }
 
@@ -285,6 +295,9 @@ export default class Question {
 
   // TODO: Create getNextQuestion() method
   getNextQuestion() {
+    this.stopTimer();
+    this.removeEventListeners();
+
     const hasMore = this.quiz.nextQuestion();
     
     if (hasMore) {
@@ -322,19 +335,15 @@ export default class Question {
       soundPath = './audio/correct.mp3';
     } else if (type === 'wrong') {
       soundPath = './audio/wrong.mp3';
-    } else if (type === 'tick') {
-      soundPath = './audio/tick.mp3';
     }
 
-    const audio = new Audio(soundPath);
-    if (type === 'tick') {
-      audio.volume = 0.15;
-    } else {
+    // الـ tick اتشالت من هنا لأنها اتعالجت فوق باحترافية وانعزلت لوحدها لمنع التداخل
+    if (soundPath) {
+      const audio = new Audio(soundPath);
       audio.volume = 0.4;
+      audio.play().catch(e => {
+        console.log("Audio play deferred: ", e);
+      });
     }
-
-    audio.play().catch(e => {
-      console.log("Audio play deferred: ", e);
-    });
   }
 }
